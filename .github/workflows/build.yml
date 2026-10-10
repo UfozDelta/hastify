@@ -1,0 +1,45 @@
+name: Build IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (unsigned)
+        run: |
+          xcodebuild build \
+            -project Hastify.xcodeproj \
+            -scheme Hastify \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
+
+      # Ad-hoc sign so the App Group entitlements are embedded; SideStore/AltStore
+      # read them when re-signing with your Apple ID.
+      - name: Embed entitlements and package IPA
+        run: |
+          APP=build/Build/Products/Release-iphoneos/Hastify.app
+          codesign -f -s - --entitlements Widget/HastifyWidget.entitlements "$APP/PlugIns/HastifyWidget.appex"
+          codesign -f -s - --entitlements App/Hastify.entitlements "$APP"
+          mkdir Payload
+          cp -R "$APP" Payload/
+          zip -qry Hastify.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Hastify-ipa
+          path: Hastify.ipa
