@@ -31,6 +31,9 @@ struct ContentView: View {
                     }
                     .onDelete(perform: delete)
                 }
+                Section("Test") {
+                    Button("Simulate tap", action: simulateTap)
+                }
                 Section("Setup") {
                     Text("""
                     Shortcuts → Automation → + → Transaction → pick all cards → Run Immediately.
@@ -44,13 +47,24 @@ struct ContentView: View {
             .navigationTitle("Hastify")
         }
         .onAppear(perform: reload)
-        .onChange(of: scenePhase) { _, phase in
+        .onChange(of: scenePhase) { phase in
             if phase == .active { reload() }
         }
     }
 
     private func reload() {
         spends = SpendStore.today()
+    }
+
+    /// Fakes a Wallet transaction through the same path the Shortcuts trigger uses,
+    /// including a currency-formatted amount string.
+    private func simulateTap() {
+        let merchants = ["Starbucks", "Target", "Chipotle", "7-Eleven", "Whole Foods"]
+        let cents = Int.random(in: 150...4500)
+        let amount = "$\(cents / 100).\(String(format: "%02d", cents % 100))"
+        SpendStore.log(amountText: amount, merchant: merchants.randomElement(), card: "Test Card")
+        WidgetCenter.shared.reloadAllTimelines()
+        reload()
     }
 
     private func delete(at offsets: IndexSet) {

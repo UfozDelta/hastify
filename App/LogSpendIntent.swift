@@ -18,10 +18,9 @@ struct LogSpendIntent: AppIntent {
     var card: String?
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        guard let value = AmountParser.parse(amount), value > 0 else {
+        guard SpendStore.log(amountText: amount, merchant: merchant, card: card) != nil else {
             return .result(value: "Skipped: no amount in \"\(amount)\"")
         }
-        SpendStore.add(Spend(date: .now, amount: value, merchant: merchant ?? "", card: card ?? ""))
         WidgetCenter.shared.reloadAllTimelines()
         return .result(value: SpendStore.total(SpendStore.today()).formatted(.currency(code: Currency.code)))
     }

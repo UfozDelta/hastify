@@ -53,6 +53,15 @@ enum SpendStore {
         save(all() + [spend])
     }
 
+    /// Entry point for both the Log Spend intent and the in-app simulator.
+    /// Returns nil when the text holds no positive amount.
+    @discardableResult
+    static func log(amountText: String, merchant: String?, card: String?) -> Decimal? {
+        guard let value = AmountParser.parse(amountText), value > 0 else { return nil }
+        add(Spend(date: .now, amount: value, merchant: merchant ?? "", card: card ?? ""))
+        return value
+    }
+
     static func delete(ids: Set<UUID>) {
         save(all().filter { !ids.contains($0.id) })
     }

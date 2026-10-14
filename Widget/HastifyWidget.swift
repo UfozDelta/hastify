@@ -58,12 +58,24 @@ struct SpendWidgetView: View {
     }
 }
 
+private extension View {
+    /// iOS 17 requires containerBackground; iOS 16 doesn't have it.
+    @ViewBuilder
+    func widgetBackground() -> some View {
+        if #available(iOSApplicationExtension 17.0, *) {
+            containerBackground(.fill.tertiary, for: .widget)
+        } else {
+            padding()
+        }
+    }
+}
+
 @main
 struct HastifyWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "TodaySpend", provider: Provider()) { entry in
             SpendWidgetView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .widgetBackground()
         }
         .configurationDisplayName("Spent Today")
         .description("Today's Apple Pay tap-to-pay total.")
