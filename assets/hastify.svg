@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="280" viewBox="0 0 880 280" role="img" aria-label="Hastify">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a770ff"/>
+      <stop offset="1" stop-color="#4c1d95"/>
+    </linearGradient>
+  </defs>
+  <rect width="880" height="280" rx="28" fill="url(#bg)"/>
+
+  <!-- contactless tap icon -->
+  <g fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round">
+    <path d="M 120 98 A 42 42 0 0 1 120 182"/>
+    <path d="M 120 72 A 68 68 0 0 1 120 208"/>
+    <path d="M 120 46 A 94 94 0 0 1 120 234"/>
+  </g>
+  <circle cx="82" cy="140" r="14" fill="#fff"/>
+
+  <text x="270" y="138" fill="#fff" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="68" font-weight="700">Hastify</text>
+  <text x="272" y="180" fill="#fff" fill-opacity="0.85" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="24">Your tap-to-pay spending, on your Home Screen.</text>
+
+  <!-- mini bar chart -->
+  <g fill="#fff">
+    <rect x="272" y="206" width="22" height="26" rx="4" fill-opacity="0.45"/>
+    <rect x="304" y="192" width="22" height="40" rx="4" fill-opacity="0.45"/>
+    <rect x="336" y="214" width="22" height="18" rx="4" fill-opacity="0.45"/>
+    <rect x="368" y="184" width="22" height="48" rx="4" fill-opacity="0.45"/>
+    <rect x="400" y="200" width="22" height="32" rx="4" fill-opacity="0.45"/>
+    <rect x="432" y="210" width="22" height="22" rx="4" fill-opacity="0.45"/>
+    <rect x="464" y="176" width="22" height="56" rx="4"/>
+  </g>
+</svg>
