@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var model = SpendModel()
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("onboarded") private var onboarded = false
 
     var body: some View {
         TabView {
@@ -12,10 +13,15 @@ struct ContentView: View {
                 .tabItem { Label("Places", systemImage: "storefront") }
             HistoryView(model: model)
                 .tabItem { Label("History", systemImage: "list.bullet") }
+            GoalView(model: model)
+                .tabItem { Label("Goal", systemImage: "target") }
             SettingsView(model: model)
                 .tabItem { Label("Settings", systemImage: "gearshape") }
         }
-        .tint(Theme.accent)
+        .tint(model.settings.theme.color)
+        .fullScreenCover(isPresented: Binding(get: { !onboarded }, set: { onboarded = !$0 })) {
+            OnboardingView(model: model) { onboarded = true }
+        }
         .onAppear(perform: model.reload)
         .onActive(scenePhase, perform: model.reload)
     }

@@ -12,10 +12,11 @@ struct OverviewView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    todayCard
-                    statGrid
-                    chartCard
-                    topMerchantsCard
+                    todayCard.entrance(0)
+                    budgetCard.entrance(1)
+                    statGrid.entrance(2)
+                    chartCard.entrance(3)
+                    topMerchantsCard.entrance(4)
                 }
                 .padding(16)
             }
@@ -28,25 +29,53 @@ struct OverviewView: View {
         let today = SpendStats.total(todaySpends)
         let yesterday = SpendStats.total(yesterdaySpends)
         let diff = today - yesterday
-        return Card {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Spent today").font(.subheadline).foregroundStyle(.secondary)
-                Text(today.money)
-                    .font(.system(size: 48, weight: .bold, design: .rounded))
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
-                HStack(spacing: 6) {
-                    Text("\(todaySpends.count) tap\(todaySpends.count == 1 ? "" : "s")")
-                    Text("·")
-                    if yesterdaySpends.isEmpty {
-                        Text("nothing yesterday")
-                    } else {
-                        Image(systemName: diff > 0 ? "arrow.up.right" : "arrow.down.right")
-                        Text("\((diff < 0 ? -diff : diff).money) vs yesterday")
+        let accent = model.settings.theme.color
+        return VStack(alignment: .leading, spacing: 6) {
+            Text("Spent today").font(.subheadline.weight(.medium)).opacity(0.8)
+            Text(today.money)
+                .font(.system(size: 52, weight: .bold, design: .rounded))
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+                .numericText(today.money)
+            HStack(spacing: 6) {
+                Text("\(todaySpends.count) tap\(todaySpends.count == 1 ? "" : "s")")
+                Text("·")
+                if yesterdaySpends.isEmpty {
+                    Text("nothing yesterday")
+                } else {
+                    Image(systemName: diff > 0 ? "arrow.up.right" : "arrow.down.right")
+                    Text("\((diff < 0 ? -diff : diff).money) vs yesterday")
+                }
+            }
+            .font(.footnote.weight(.medium))
+            .opacity(0.85)
+        }
+        .foregroundStyle(.white)
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(colors: [accent, accent.deepened()], startPoint: .topLeading, endPoint: .bottomTrailing),
+            in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+        )
+        .shadow(color: accent.opacity(0.35), radius: 14, y: 8)
+    }
+
+    @ViewBuilder
+    private var budgetCard: some View {
+        if let budget = model.settings.dailyBudget, budget > 0 {
+            let spent = SpendStats.total(todaySpends)
+            Card {
+                HStack(spacing: 16) {
+                    BudgetRing(spent: spent, budget: budget, tint: Theme.accent, lineWidth: 10, animated: true)
+                        .frame(width: 64, height: 64)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Daily budget").font(.subheadline).foregroundStyle(.secondary)
+                        Text(model.settings.budgetStatus(spent: spent) ?? "")
+                            .font(.system(.title3, design: .rounded).bold())
+                            .foregroundStyle(spent > budget ? Color.red : Color.primary)
+                        Text("of \(budget.money)").font(.footnote).foregroundStyle(.secondary)
                     }
                 }
-                .font(.footnote)
-                .foregroundStyle(diff > 0 && !yesterdaySpends.isEmpty ? Color.orange : Theme.accent)
             }
         }
     }

@@ -18,6 +18,9 @@ struct LogSpendIntent: AppIntent {
     var card: String?
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
+        if SettingsStore.load().isIgnored(merchant ?? "") {
+            return .result(value: "Skipped: ignored place")
+        }
         guard SpendStore.log(amountText: amount, merchant: merchant, card: card) != nil else {
             return .result(value: "Skipped: no amount in \"\(amount)\"")
         }

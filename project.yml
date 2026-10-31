@@ -28,6 +28,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hastify.app
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-Ocean AppIcon-Mint AppIcon-Sunset AppIcon-Rose"
     dependencies:
       - target: HastifyWidget
   HastifyWidget:

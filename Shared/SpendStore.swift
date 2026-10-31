@@ -34,10 +34,12 @@ enum SpendStore {
         return nil
     }
 
-    private static var fileURL: URL {
+    static func fileURL(named name: String) -> URL {
         let dir = containerURL ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return dir.appendingPathComponent(fileName)
+        return dir.appendingPathComponent(name)
     }
+
+    private static var fileURL: URL { fileURL(named: fileName) }
 
     static func all() -> [Spend] {
         guard let data = try? Data(contentsOf: fileURL) else { return [] }
@@ -54,10 +56,11 @@ enum SpendStore {
     }
 
     /// Entry point for both the Log Spend intent and the in-app simulator.
-    /// Returns nil when the text holds no positive amount.
+    /// Returns nil when the text holds no positive amount or the merchant is ignored.
     @discardableResult
     static func log(amountText: String, merchant: String?, card: String?) -> Decimal? {
         guard let value = AmountParser.parse(amountText), value > 0 else { return nil }
+        guard !SettingsStore.load().isIgnored(merchant ?? "") else { return nil }
         add(Spend(date: .now, amount: value, merchant: merchant ?? "", card: card ?? ""))
         return value
     }

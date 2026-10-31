@@ -32,6 +32,7 @@ struct HistoryView: View {
                             }
                         }
                         .onDelete { offsets in
+                            Haptics.tap(.rigid)
                             model.delete(ids: Set(offsets.map { section.spends[$0].id }))
                         }
                     } header: {
@@ -46,6 +47,7 @@ struct HistoryView: View {
             .navigationTitle("History")
             .toolbar {
                 Button {
+                    Haptics.tap()
                     showingAdd = true
                 } label: {
                     Label("Add", systemImage: "plus")
@@ -93,6 +95,7 @@ struct AddSpendView: View {
                     Button("Save") {
                         if let amount {
                             model.add(Spend(date: date, amount: amount, merchant: merchant, card: "Manual"))
+                            Haptics.success()
                             dismiss()
                         }
                     }
