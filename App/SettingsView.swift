@@ -42,6 +42,7 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .keyboardDoneButton()
             .confirmationDialog("Delete all logged spending?", isPresented: $confirmClear, titleVisibility: .visible) {
                 Button("Delete all", role: .destructive) { model.clearAll(); Haptics.warning() }
             }

@@ -58,11 +58,16 @@ struct SpendWidgetView: View {
             } else {
                 VStack(spacing: 0) {
                     Image(systemName: "creditcard").font(.caption)
-                    Text(entry.total.shortMoney).font(.headline).minimumScaleFactor(0.5)
+                    Text(entry.total.shortMoney)
+                        .font(.headline)
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
+                        .multilineTextAlignment(.center)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         case .accessoryRectangular:
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .center, spacing: 2) {
                 Text("Spent today").font(.caption)
                 Text(entry.total.money).font(.headline)
                 if let budget = entry.budget, budget > 0 {
@@ -70,19 +75,23 @@ struct SpendWidgetView: View {
                         .gaugeStyle(.accessoryLinearCapacity)
                 }
             }
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
         default:
             small
         }
     }
 
     private var small: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(spacing: 4) {
             Text("Today").font(.caption).foregroundStyle(.secondary)
+            Spacer(minLength: 0)
             Text(entry.total.money)
                 .font(.system(.title, design: .rounded).bold())
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)
-            Spacer()
+                .multilineTextAlignment(.center)
+            Spacer(minLength: 0)
             if let budget = entry.budget, budget > 0 {
                 HStack(spacing: 8) {
                     BudgetRing(spent: entry.total, budget: budget, tint: entry.accent, lineWidth: 5)
@@ -97,7 +106,7 @@ struct SpendWidgetView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func status(_ budget: Decimal) -> String {

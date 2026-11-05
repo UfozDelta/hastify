@@ -87,6 +87,7 @@ struct AddSpendView: View {
             }
             .navigationTitle("Add spend")
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardDoneButton()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

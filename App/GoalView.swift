@@ -101,12 +101,29 @@ struct GoalEditView: View {
 
     private var existing: SavingsGoal? { model.settings.savingsGoal }
 
+    private func save() {
+        guard let target else { return }
+        let title = name.trimmingCharacters(in: .whitespaces)
+        model.updateSettings { settings in
+            // Editing keeps the original start date so progress isn't lost.
+            let start = settings.savingsGoal?.startDate ?? Date()
+            settings.savingsGoal = SavingsGoal(name: title.isEmpty ? "Savings" : title, target: target, startDate: start)
+        }
+        Haptics.success()
+        dismiss()
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 TextField("Name (e.g. Trip)", text: $name)
                 TextField("Target amount", text: $targetText)
                     .keyboardType(.decimalPad)
+                Section {
+                    Button(existing == nil ? "Set goal" : "Save changes") { save() }
+                        .frame(maxWidth: .infinity)
+                        .disabled(target == nil)
+                }
                 if existing != nil {
                     Section {
                         Button("Delete goal", role: .destructive) { confirmDelete = true }
@@ -120,20 +137,11 @@ struct GoalEditView: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        guard let target else { return }
-                        let title = name.trimmingCharacters(in: .whitespaces)
-                        model.updateSettings { settings in
-                            // Editing keeps the original start date so progress isn't lost.
-                            let start = settings.savingsGoal?.startDate ?? Date()
-                            settings.savingsGoal = SavingsGoal(name: title.isEmpty ? "Savings" : title, target: target, startDate: start)
-                        }
-                        Haptics.success()
-                        dismiss()
-                    }
-                    .disabled(target == nil)
+                    Button("Save") { save() }
+                        .disabled(target == nil)
                 }
             }
+            .keyboardDoneButton()
             .confirmationDialog("Delete this goal?", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Delete goal", role: .destructive) {
                     model.updateSettings { $0.savingsGoal = nil }
