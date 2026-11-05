@@ -23,8 +23,8 @@ jobs:
 
   build:
     needs: test
-    # Only main (or a manual run) spends macOS minutes; other branches stop after the tests.
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    # The IPA is only ever built on main (push or manual run there); every other branch stops after the tests.
+    if: github.ref == 'refs/heads/main'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4

@@ -25,6 +25,7 @@ enum SpendStore {
     /// AltStore/SideStore rename App Group IDs when re-signing and list the real ones
     /// under `ALTAppGroups` in Info.plist (of the app, and sometimes the extension).
     private static var containerURL: URL? {
+        #if canImport(Darwin)
         var bundles = [Bundle.main]
         if Bundle.main.bundleURL.pathExtension == "appex",
            let host = Bundle(url: Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent()) {
@@ -37,6 +38,10 @@ enum SpendStore {
             }
         }
         return nil
+        #else
+        // App Groups only exist on Apple platforms; the Linux test run uses `directoryOverride`.
+        return nil
+        #endif
     }
 
     /// Tests point the store at a temp folder instead of the App Group container.
@@ -106,6 +111,16 @@ enum SpendStore {
                 && $0.merchant == spend.merchant
                 && $0.card == spend.card
                 && abs($0.date.timeIntervalSince(spend.date)) <= window
+        }
+    }
+
+    /// Replaces the spend with the same id; does nothing if it was deleted meanwhile.
+    static func update(_ spend: Spend) {
+        locked {
+            var items = all()
+            guard let index = items.firstIndex(where: { $0.id == spend.id }) else { return }
+            items[index] = spend
+            save(items)
         }
     }
 

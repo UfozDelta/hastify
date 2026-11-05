@@ -68,6 +68,26 @@ final class SpendStoreTests: XCTestCase {
         XCTAssertEqual(SpendStore.all().map(\.merchant), ["B"])
     }
 
+    func testUpdateReplacesBySameId() {
+        var spend = Spend(date: Date(), amount: 5, merchant: "Cafe", card: "Visa")
+        SpendStore.add(spend)
+        SpendStore.add(Spend(date: Date(), amount: 9, merchant: "Other", card: ""))
+        spend.amount = 7
+        spend.merchant = "Cafe Nero"
+        SpendStore.update(spend)
+        let all = SpendStore.all()
+        XCTAssertEqual(all.count, 2)
+        XCTAssertEqual(all.first { $0.id == spend.id }?.amount, 7)
+        XCTAssertEqual(all.first { $0.id == spend.id }?.merchant, "Cafe Nero")
+        XCTAssertEqual(all.first { $0.id == spend.id }?.card, "Visa")
+    }
+
+    func testUpdateOfDeletedSpendDoesNothing() {
+        let gone = Spend(date: Date(), amount: 5, merchant: "Gone", card: "")
+        SpendStore.update(gone)
+        XCTAssertTrue(SpendStore.all().isEmpty)
+    }
+
     func testConcurrentAddsDoNotLoseWrites() {
         let count = 40
         DispatchQueue.concurrentPerform(iterations: count) { i in
@@ -78,6 +98,38 @@ final class SpendStoreTests: XCTestCase {
 }
 
 final class SettingsTests: XCTestCase {
+    func testOldSettingsFileStillDecodes() throws {
+        // A settings.json from before weekly/monthly budgets, alerts, quick add and categories.
+        let json = #"{"dailyBudget":40,"ignoredMerchants":["MTA"],"theme":"ocean"}"#
+        let settings = try JSONDecoder().decode(Settings.self, from: Data(json.utf8))
+        XCTAssertEqual(settings.dailyBudget, 40)
+        XCTAssertEqual(settings.ignoredMerchants, ["MTA"])
+        XCTAssertEqual(settings.theme, .ocean)
+        XCTAssertFalse(settings.notifyBudget)
+        XCTAssertNil(settings.weeklyBudget)
+        XCTAssertNil(settings.quickAddAmount)
+        XCTAssertTrue(settings.categoryRules.isEmpty)
+    }
+
+    func testEmptyObjectDecodesToDefaults() throws {
+        let settings = try JSONDecoder().decode(Settings.self, from: Data("{}".utf8))
+        XCTAssertEqual(settings, Settings())
+    }
+
+    func testNewFieldsRoundTrip() throws {
+        let original = Settings(
+            weeklyBudget: 200, monthlyBudget: 800, notifyBudget: true, quickAddAmount: 5,
+            categoryRules: [CategoryRule(keyword: "joe", category: .dining)]
+        )
+        let decoded = try JSONDecoder().decode(Settings.self, from: JSONEncoder().encode(original))
+        XCTAssertEqual(decoded, original)
+    }
+
+    func testStatusText() {
+        XCTAssertTrue(Settings.status(spent: 30, budget: 50).hasSuffix("left"))
+        XCTAssertTrue(Settings.status(spent: 80, budget: 50).hasSuffix("over"))
+    }
+
     func testIgnoredMatchIsCaseInsensitiveSubstring() {
         let settings = Settings(ignoredMerchants: ["mta", "  ", "Clipper"])
         XCTAssertTrue(settings.isIgnored("MTA*NYCT PAYGO"))

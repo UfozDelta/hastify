@@ -30,9 +30,21 @@ extension AppTheme {
 
 struct Settings: Codable, Equatable {
     var dailyBudget: Decimal?
+    var weeklyBudget: Decimal?
+    var monthlyBudget: Decimal?
     var ignoredMerchants: [String] = []
     var theme: AppTheme = .violet
     var savingsGoal: SavingsGoal?
+    /// Notify when a tap takes you near or over the daily budget.
+    var notifyBudget = false
+    /// Amount the widget's "+" button adds as a cash spend.
+    var quickAddAmount: Decimal?
+    var categoryRules: [CategoryRule] = []
+
+    enum CodingKeys: String, CodingKey {
+        case dailyBudget, weeklyBudget, monthlyBudget, ignoredMerchants, theme, savingsGoal
+        case notifyBudget, quickAddAmount, categoryRules
+    }
 
     /// Case-insensitive substring match, so "MTA" also catches "MTA*NYCT PAYGO".
     func isIgnored(_ merchant: String) -> Bool {
@@ -99,10 +111,30 @@ extension Decimal {
 }
 
 extension Settings {
-    /// "$12.00 left" / "$3.50 over", or nil with no budget.
-    func budgetStatus(spent: Decimal) -> String? {
-        guard let budget = dailyBudget else { return nil }
+    /// Every key is optional so a settings.json written by an older version still loads
+    /// instead of silently resetting everything.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        dailyBudget = try c.decodeIfPresent(Decimal.self, forKey: .dailyBudget)
+        weeklyBudget = try c.decodeIfPresent(Decimal.self, forKey: .weeklyBudget)
+        monthlyBudget = try c.decodeIfPresent(Decimal.self, forKey: .monthlyBudget)
+        ignoredMerchants = try c.decodeIfPresent([String].self, forKey: .ignoredMerchants) ?? []
+        theme = try c.decodeIfPresent(AppTheme.self, forKey: .theme) ?? .violet
+        savingsGoal = try c.decodeIfPresent(SavingsGoal.self, forKey: .savingsGoal)
+        notifyBudget = try c.decodeIfPresent(Bool.self, forKey: .notifyBudget) ?? false
+        quickAddAmount = try c.decodeIfPresent(Decimal.self, forKey: .quickAddAmount)
+        categoryRules = try c.decodeIfPresent([CategoryRule].self, forKey: .categoryRules) ?? []
+    }
+
+    /// "$12.00 left" / "$3.50 over".
+    static func status(spent: Decimal, budget: Decimal) -> String {
         let diff = budget - spent
         return diff >= 0 ? "\(diff.money) left" : "\((-diff).money) over"
+    }
+
+    /// Daily-budget status, or nil with no budget.
+    func budgetStatus(spent: Decimal) -> String? {
+        guard let budget = dailyBudget else { return nil }
+        return Self.status(spent: spent, budget: budget)
     }
 }

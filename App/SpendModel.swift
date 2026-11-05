@@ -60,6 +60,11 @@ final class SpendModel: ObservableObject {
         didChange()
     }
 
+    func update(_ spend: Spend) {
+        SpendStore.update(spend)
+        didChange()
+    }
+
     func delete(ids: Set<UUID>) {
         SpendStore.delete(ids: ids)
         didChange()

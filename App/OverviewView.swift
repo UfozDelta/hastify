@@ -14,6 +14,7 @@ struct OverviewView: View {
                 VStack(spacing: 16) {
                     todayCard.entrance(0)
                     budgetCard.entrance(1)
+                    periodBudgetCards.entrance(1)
                     statGrid.entrance(2)
                     chartCard.entrance(3)
                     topMerchantsCard.entrance(4)
@@ -75,6 +76,32 @@ struct OverviewView: View {
                             .foregroundStyle(spent > budget ? Color.red : Color.primary)
                         Text("of \(budget.money)").font(.footnote).foregroundStyle(.secondary)
                     }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var periodBudgetCards: some View {
+        if let budget = model.settings.weeklyBudget, budget > 0 {
+            periodCard("Weekly budget", spent: SpendStats.total(SpendStats.during(.weekOfYear, model.spends)), budget: budget)
+        }
+        if let budget = model.settings.monthlyBudget, budget > 0 {
+            periodCard("Monthly budget", spent: SpendStats.total(SpendStats.during(.month, model.spends)), budget: budget)
+        }
+    }
+
+    private func periodCard(_ title: String, spent: Decimal, budget: Decimal) -> some View {
+        Card {
+            HStack(spacing: 16) {
+                BudgetRing(spent: spent, budget: budget, tint: Theme.accent, lineWidth: 10, animated: true)
+                    .frame(width: 64, height: 64)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).font(.subheadline).foregroundStyle(.secondary)
+                    Text(Settings.status(spent: spent, budget: budget))
+                        .font(.system(.title3, design: .rounded).bold())
+                        .foregroundStyle(spent > budget ? Color.red : Color.primary)
+                    Text("\(spent.money) of \(budget.money)").font(.footnote).foregroundStyle(.secondary)
                 }
             }
         }
