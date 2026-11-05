@@ -1,4 +1,7 @@
+import Foundation
+#if canImport(SwiftUI)
 import SwiftUI
+#endif
 
 /// Accent themes. Each one also has a matching alternate app icon (`AppIcon-<name>`).
 enum AppTheme: String, Codable, CaseIterable, Identifiable {
@@ -7,6 +10,12 @@ enum AppTheme: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
     var name: String { rawValue.capitalized }
 
+    /// Alternate icon name for `setAlternateIconName`; nil is the primary (violet) icon.
+    var iconName: String? { self == .violet ? nil : "AppIcon-\(name)" }
+}
+
+#if canImport(SwiftUI)
+extension AppTheme {
     var color: Color {
         switch self {
         case .violet: return Color(red: 0.55, green: 0.36, blue: 0.96)
@@ -16,16 +25,26 @@ enum AppTheme: String, Codable, CaseIterable, Identifiable {
         case .rose: return Color(red: 0.93, green: 0.30, blue: 0.55)
         }
     }
-
-    /// Alternate icon name for `setAlternateIconName`; nil is the primary (violet) icon.
-    var iconName: String? { self == .violet ? nil : "AppIcon-\(name)" }
 }
+#endif
 
 struct Settings: Codable, Equatable {
     var dailyBudget: Decimal?
+    var weeklyBudget: Decimal?
+    var monthlyBudget: Decimal?
     var ignoredMerchants: [String] = []
     var theme: AppTheme = .violet
     var savingsGoal: SavingsGoal?
+    /// Notify when a tap takes you near or over the daily budget.
+    var notifyBudget = false
+    /// Amount the widget's "+" button adds as a cash spend.
+    var quickAddAmount: Decimal?
+    var categoryRules: [CategoryRule] = []
+
+    enum CodingKeys: String, CodingKey {
+        case dailyBudget, weeklyBudget, monthlyBudget, ignoredMerchants, theme, savingsGoal
+        case notifyBudget, quickAddAmount, categoryRules
+    }
 
     /// Case-insensitive substring match, so "MTA" also catches "MTA*NYCT PAYGO".
     func isIgnored(_ merchant: String) -> Bool {
@@ -52,6 +71,7 @@ enum SettingsStore {
     }
 }
 
+#if canImport(SwiftUI)
 /// Progress ring for spent vs. budget; turns red once over.
 struct BudgetRing: View {
     let spent: Decimal
@@ -83,6 +103,7 @@ struct BudgetRing: View {
         .onAppear { drawn = true }
     }
 }
+#endif
 
 extension Decimal {
     /// Whole units only, for tight spaces like Lock Screen widgets.
@@ -90,10 +111,30 @@ extension Decimal {
 }
 
 extension Settings {
-    /// "$12.00 left" / "$3.50 over", or nil with no budget.
-    func budgetStatus(spent: Decimal) -> String? {
-        guard let budget = dailyBudget else { return nil }
+    /// Every key is optional so a settings.json written by an older version still loads
+    /// instead of silently resetting everything.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        dailyBudget = try c.decodeIfPresent(Decimal.self, forKey: .dailyBudget)
+        weeklyBudget = try c.decodeIfPresent(Decimal.self, forKey: .weeklyBudget)
+        monthlyBudget = try c.decodeIfPresent(Decimal.self, forKey: .monthlyBudget)
+        ignoredMerchants = try c.decodeIfPresent([String].self, forKey: .ignoredMerchants) ?? []
+        theme = try c.decodeIfPresent(AppTheme.self, forKey: .theme) ?? .violet
+        savingsGoal = try c.decodeIfPresent(SavingsGoal.self, forKey: .savingsGoal)
+        notifyBudget = try c.decodeIfPresent(Bool.self, forKey: .notifyBudget) ?? false
+        quickAddAmount = try c.decodeIfPresent(Decimal.self, forKey: .quickAddAmount)
+        categoryRules = try c.decodeIfPresent([CategoryRule].self, forKey: .categoryRules) ?? []
+    }
+
+    /// "$12.00 left" / "$3.50 over".
+    static func status(spent: Decimal, budget: Decimal) -> String {
         let diff = budget - spent
         return diff >= 0 ? "\(diff.money) left" : "\((-diff).money) over"
+    }
+
+    /// Daily-budget status, or nil with no budget.
+    func budgetStatus(spent: Decimal) -> String? {
+        guard let budget = dailyBudget else { return nil }
+        return Self.status(spent: spent, budget: budget)
     }
 }

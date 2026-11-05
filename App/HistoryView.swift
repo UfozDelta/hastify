@@ -3,6 +3,7 @@ import SwiftUI
 struct HistoryView: View {
     @ObservedObject var model: SpendModel
     @State private var showingAdd = false
+    @State private var editing: Spend?
 
     private var sections: [(day: Date, spends: [Spend])] {
         let cal = Calendar.current
@@ -20,16 +21,23 @@ struct HistoryView: View {
                 ForEach(sections, id: \.day) { section in
                     Section {
                         ForEach(section.spends) { spend in
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text(spend.merchant.isEmpty ? "Unknown" : spend.merchant)
-                                    Text(subtitle(for: spend))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                            Button {
+                                Haptics.tap()
+                                editing = spend
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading) {
+                                        Text(spend.merchant.isEmpty ? "Unknown" : spend.merchant)
+                                        Text(subtitle(for: spend))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Text(spend.amount.money).monospacedDigit()
                                 }
-                                Spacer()
-                                Text(spend.amount.money).monospacedDigit()
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
                         }
                         .onDelete { offsets in
                             Haptics.tap(.rigid)
@@ -55,6 +63,9 @@ struct HistoryView: View {
             }
             .sheet(isPresented: $showingAdd) {
                 AddSpendView(model: model)
+            }
+            .sheet(item: $editing) { spend in
+                EditSpendView(model: model, spend: spend)
             }
         }
     }
@@ -87,6 +98,7 @@ struct AddSpendView: View {
             }
             .navigationTitle("Add spend")
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardDoneButton()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -98,6 +110,63 @@ struct AddSpendView: View {
                             Haptics.success()
                             dismiss()
                         }
+                    }
+                    .disabled(amount == nil)
+                }
+            }
+        }
+    }
+}
+
+/// Fix the amount, merchant or time of a logged spend (a wrong Shortcut value, a missed tap's time).
+struct EditSpendView: View {
+    @ObservedObject var model: SpendModel
+    let spend: Spend
+    @Environment(\.dismiss) private var dismiss
+    @State private var amountText: String
+    @State private var merchant: String
+    @State private var date: Date
+
+    init(model: SpendModel, spend: Spend) {
+        self.model = model
+        self.spend = spend
+        _amountText = State(initialValue: "\(spend.amount)")
+        _merchant = State(initialValue: spend.merchant)
+        _date = State(initialValue: spend.date)
+    }
+
+    private var amount: Decimal? {
+        AmountParser.parse(amountText).flatMap { $0 > 0 ? $0 : nil }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("Amount", text: $amountText)
+                    .keyboardType(.decimalPad)
+                TextField("Merchant", text: $merchant)
+                DatePicker("When", selection: $date, in: ...Date.now)
+                if !spend.card.isEmpty {
+                    LabeledContent("Card", value: spend.card)
+                }
+            }
+            .navigationTitle("Edit spend")
+            .navigationBarTitleDisplayMode(.inline)
+            .keyboardDoneButton()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        guard let amount else { return }
+                        var updated = spend
+                        updated.amount = amount
+                        updated.merchant = merchant.trimmingCharacters(in: .whitespaces)
+                        updated.date = date
+                        model.update(updated)
+                        Haptics.success()
+                        dismiss()
                     }
                     .disabled(amount == nil)
                 }

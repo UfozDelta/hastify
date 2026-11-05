@@ -2,11 +2,29 @@ name: Build IPA
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   workflow_dispatch:
 
+# A newer push to the same branch supersedes the one still running.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # Cheap Linux job: unit tests for the logic in Shared/. The macOS build only starts if these pass.
+  test:
+    runs-on: ubuntu-latest
+    container: swift:6.0
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run unit tests
+        run: swift test
+
   build:
+    needs: test
+    # The IPA is only ever built on main (push or manual run there); every other branch stops after the tests.
+    if: github.ref == 'refs/heads/main'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4

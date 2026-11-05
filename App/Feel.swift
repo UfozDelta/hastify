@@ -68,6 +68,18 @@ extension View {
         modifier(Entrance(index: index, scale: scale))
     }
 
+    /// The decimal pad has no Return key, so give it a Done button to dismiss it.
+    func keyboardDoneButton() -> some View {
+        toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+            }
+        }
+    }
+
     /// Digits roll when `value` changes (iOS 17+); a plain update before that.
     @ViewBuilder
     func numericText(_ value: String) -> some View {

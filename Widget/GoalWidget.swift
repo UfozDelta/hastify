@@ -55,14 +55,16 @@ struct GoalWidgetView: View {
                 }
                 .gaugeStyle(.accessoryCircularCapacity)
             case .accessoryRectangular:
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .center, spacing: 2) {
                     Text(entry.name).font(.caption)
                     Text("\(entry.saved.shortMoney) / \(entry.target.shortMoney)").font(.headline)
                     Gauge(value: entry.fraction) { EmptyView() }
                         .gaugeStyle(.accessoryLinearCapacity)
                 }
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
             default:
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(spacing: 6) {
                     Text(entry.name).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     ZStack {
                         BudgetRing(spent: entry.saved, budget: entry.target, tint: entry.accent, lineWidth: 9, redWhenOver: false)
@@ -75,6 +77,8 @@ struct GoalWidgetView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }

@@ -46,6 +46,7 @@ struct OnboardingView: View {
             .animation(Motion.out(0.35), value: model.settings.theme)
         }
         .tint(accent)
+        .keyboardDoneButton()
     }
 
     private var pageTransition: AnyTransition {

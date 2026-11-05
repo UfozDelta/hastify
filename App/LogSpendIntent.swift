@@ -18,11 +18,16 @@ struct LogSpendIntent: AppIntent {
     var card: String?
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        if SettingsStore.load().isIgnored(merchant ?? "") {
+        let before = SpendStore.total(SpendStore.today())
+        switch SpendStore.log(amountText: amount, merchant: merchant, card: card) {
+        case .ignored:
             return .result(value: "Skipped: ignored place")
-        }
-        guard SpendStore.log(amountText: amount, merchant: merchant, card: card) != nil else {
+        case .invalidAmount:
             return .result(value: "Skipped: no amount in \"\(amount)\"")
+        case .duplicate:
+            return .result(value: "Skipped: duplicate tap")
+        case .logged(let value):
+            BudgetNotifier.check(before: before, after: before + value)
         }
         WidgetCenter.shared.reloadAllTimelines()
         return .result(value: SpendStore.total(SpendStore.today()).formatted(.currency(code: Currency.code)))

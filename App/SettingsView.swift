@@ -6,6 +6,8 @@ struct SettingsView: View {
     @State private var confirmClear = false
     @State private var budgetText = ""
     @State private var newRule = ""
+    @State private var newKeyword = ""
+    @State private var newCategory = SpendCategory.coffee
 
     private static let transitPreset = ["MTA", "OMNY", "BART", "TfL", "Clipper", "Transit"]
 
@@ -17,7 +19,11 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 budgetSection
+                periodBudgetSection
+                alertsSection
+                quickAddSection
                 appearanceSection
+                categorySection
                 ignoredSection
                 Section("Setup") {
                     Text("""
@@ -42,6 +48,7 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .keyboardDoneButton()
             .confirmationDialog("Delete all logged spending?", isPresented: $confirmClear, titleVisibility: .visible) {
                 Button("Delete all", role: .destructive) { model.clearAll(); Haptics.warning() }
             }
@@ -74,6 +81,90 @@ struct SettingsView: View {
             Text("Daily budget")
         } footer: {
             Text("Shows a progress ring on the widget, Lock Screen, and Overview.")
+        }
+    }
+
+    private var periodBudgetSection: some View {
+        Section {
+            AmountRow(title: "Weekly budget", current: model.settings.weeklyBudget) { amount in
+                model.updateSettings { $0.weeklyBudget = amount }
+            }
+            AmountRow(title: "Monthly budget", current: model.settings.monthlyBudget) { amount in
+                model.updateSettings { $0.monthlyBudget = amount }
+            }
+        } header: {
+            Text("Weekly & monthly budget")
+        } footer: {
+            Text("Optional. Each shows its own progress ring on Overview.")
+        }
+    }
+
+    private var alertsSection: some View {
+        Section {
+            Toggle("Budget alerts", isOn: Binding(
+                get: { model.settings.notifyBudget },
+                set: { on in
+                    guard on else {
+                        model.updateSettings { $0.notifyBudget = false }
+                        return
+                    }
+                    Task { @MainActor in
+                        let granted = await BudgetNotifier.requestPermission()
+                        model.updateSettings { $0.notifyBudget = granted }
+                    }
+                }
+            ))
+        } footer: {
+            Text("Get a notification when a tap takes you past 80% of your daily budget, and again when you go over. Needs a daily budget.")
+        }
+    }
+
+    private var quickAddSection: some View {
+        Section {
+            AmountRow(title: "Quick-add amount", current: model.settings.quickAddAmount) { amount in
+                model.updateSettings { $0.quickAddAmount = amount }
+            }
+        } header: {
+            Text("Widget quick add")
+        } footer: {
+            Text("The medium widget gets a + button that logs this amount as a cash spend (iOS 17 or later).")
+        }
+    }
+
+    private var categorySection: some View {
+        Section {
+            ForEach(model.settings.categoryRules, id: \.self) { rule in
+                Label {
+                    Text("\(rule.keyword) → \(rule.category.name)")
+                } icon: {
+                    Image(systemName: rule.category.icon)
+                }
+            }
+            .onDelete { offsets in
+                model.updateSettings { $0.categoryRules.remove(atOffsets: offsets) }
+            }
+            HStack {
+                TextField("Place contains…", text: $newKeyword)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Picker("Category", selection: $newCategory) {
+                    ForEach(SpendCategory.allCases) { Text($0.name).tag($0) }
+                }
+                .labelsHidden()
+                Button("Add") {
+                    let keyword = newKeyword.trimmingCharacters(in: .whitespaces)
+                    guard !keyword.isEmpty else { return }
+                    Haptics.tap()
+                    model.updateSettings { $0.categoryRules.append(CategoryRule(keyword: keyword, category: newCategory)) }
+                    newKeyword = ""
+                }
+                .buttonStyle(.borderless)
+                .disabled(newKeyword.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        } header: {
+            Text("Categories")
+        } footer: {
+            Text("Common places (Starbucks, Target, MTA…) are sorted automatically. Your rules win over those.")
         }
     }
 
@@ -143,6 +234,45 @@ struct SettingsView: View {
             Text("Ignored places")
         } footer: {
             Text("Taps whose merchant contains one of these are not logged. Existing history is kept.")
+        }
+    }
+}
+
+/// A decimal-pad row with Set / clear, for optional amount settings.
+private struct AmountRow: View {
+    let title: String
+    let current: Decimal?
+    let onSet: (Decimal?) -> Void
+    @State private var text = ""
+
+    private var amount: Decimal? {
+        AmountParser.parse(text).flatMap { $0 > 0 ? $0 : nil }
+    }
+
+    var body: some View {
+        HStack {
+            TextField(title, text: $text)
+                .keyboardType(.decimalPad)
+            Button("Set") {
+                guard let amount else { return }
+                onSet(amount)
+                Haptics.success()
+            }
+            .buttonStyle(.borderless)
+            .disabled(amount == nil || amount == current)
+            if current != nil {
+                Button {
+                    text = ""
+                    onSet(nil)
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Remove \(title)")
+            }
+        }
+        .onAppear {
+            if let current { text = "\(current)" }
         }
     }
 }
