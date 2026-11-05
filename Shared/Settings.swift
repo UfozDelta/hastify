@@ -1,4 +1,7 @@
+import Foundation
+#if canImport(SwiftUI)
 import SwiftUI
+#endif
 
 /// Accent themes. Each one also has a matching alternate app icon (`AppIcon-<name>`).
 enum AppTheme: String, Codable, CaseIterable, Identifiable {
@@ -7,6 +10,12 @@ enum AppTheme: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
     var name: String { rawValue.capitalized }
 
+    /// Alternate icon name for `setAlternateIconName`; nil is the primary (violet) icon.
+    var iconName: String? { self == .violet ? nil : "AppIcon-\(name)" }
+}
+
+#if canImport(SwiftUI)
+extension AppTheme {
     var color: Color {
         switch self {
         case .violet: return Color(red: 0.55, green: 0.36, blue: 0.96)
@@ -16,10 +25,8 @@ enum AppTheme: String, Codable, CaseIterable, Identifiable {
         case .rose: return Color(red: 0.93, green: 0.30, blue: 0.55)
         }
     }
-
-    /// Alternate icon name for `setAlternateIconName`; nil is the primary (violet) icon.
-    var iconName: String? { self == .violet ? nil : "AppIcon-\(name)" }
 }
+#endif
 
 struct Settings: Codable, Equatable {
     var dailyBudget: Decimal?
@@ -52,6 +59,7 @@ enum SettingsStore {
     }
 }
 
+#if canImport(SwiftUI)
 /// Progress ring for spent vs. budget; turns red once over.
 struct BudgetRing: View {
     let spent: Decimal
@@ -83,6 +91,7 @@ struct BudgetRing: View {
         .onAppear { drawn = true }
     }
 }
+#endif
 
 extension Decimal {
     /// Whole units only, for tight spaces like Lock Screen widgets.

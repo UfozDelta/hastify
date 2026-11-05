@@ -1,4 +1,9 @@
 import Foundation
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
 
 struct Spend: Codable, Identifiable, Hashable {
     var id = UUID()
@@ -34,9 +39,26 @@ enum SpendStore {
         return nil
     }
 
+    /// Tests point the store at a temp folder instead of the App Group container.
+    static var directoryOverride: URL?
+
     static func fileURL(named name: String) -> URL {
+        if let directoryOverride { return directoryOverride.appendingPathComponent(name) }
         let dir = containerURL ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         return dir.appendingPathComponent(name)
+    }
+
+    /// Cross-process lock (the app, the widget and the intent all write spends.json), so two
+    /// read-modify-write cycles can't overwrite each other and lose a tap. Not reentrant.
+    private static func locked<T>(_ body: () -> T) -> T {
+        let fd = open(fileURL(named: "spends.lock").path, O_CREAT | O_RDWR, 0o644)
+        guard fd >= 0 else { return body() }
+        flock(fd, LOCK_EX)
+        defer {
+            flock(fd, LOCK_UN)
+            close(fd)
+        }
+        return body()
     }
 
     private static var fileURL: URL { fileURL(named: fileName) }
@@ -52,21 +74,43 @@ enum SpendStore {
     }
 
     static func add(_ spend: Spend) {
-        save(all() + [spend])
+        locked { save(all() + [spend]) }
+    }
+
+    enum LogResult: Equatable {
+        case logged(Decimal)
+        case invalidAmount
+        case ignored
+        /// Same amount, merchant and card as a tap seconds ago; the automation can fire twice.
+        case duplicate
     }
 
     /// Entry point for both the Log Spend intent and the in-app simulator.
-    /// Returns nil when the text holds no positive amount or the merchant is ignored.
     @discardableResult
-    static func log(amountText: String, merchant: String?, card: String?) -> Decimal? {
-        guard let value = AmountParser.parse(amountText), value > 0 else { return nil }
-        guard !SettingsStore.load().isIgnored(merchant ?? "") else { return nil }
-        add(Spend(date: .now, amount: value, merchant: merchant ?? "", card: card ?? ""))
-        return value
+    static func log(amountText: String, merchant: String?, card: String?, now: Date = .now) -> LogResult {
+        guard let value = AmountParser.parse(amountText), value > 0 else { return .invalidAmount }
+        guard !SettingsStore.load().isIgnored(merchant ?? "") else { return .ignored }
+        let spend = Spend(date: now, amount: value, merchant: merchant ?? "", card: card ?? "")
+        return locked {
+            let existing = all()
+            if isDuplicate(spend, in: existing) { return .duplicate }
+            save(existing + [spend])
+            return .logged(value)
+        }
+    }
+
+    /// True when `spend` matches an existing one within `window` seconds.
+    static func isDuplicate(_ spend: Spend, in existing: [Spend], window: TimeInterval = 30) -> Bool {
+        existing.contains {
+            $0.amount == spend.amount
+                && $0.merchant == spend.merchant
+                && $0.card == spend.card
+                && abs($0.date.timeIntervalSince(spend.date)) <= window
+        }
     }
 
     static func delete(ids: Set<UUID>) {
-        save(all().filter { !ids.contains($0.id) })
+        locked { save(all().filter { !ids.contains($0.id) }) }
     }
 
     static func today(_ now: Date = .now) -> [Spend] {
